@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(cmake --build:*)",
+      "Bash(\"D:\\\\Claude\\\\MedicalReportMonitor\\\\bin\\\\Release\\\\MedicalReportMonitor.exe\" \"c:\\\\Users\\\\ZANDA\\\\Desktop\\\\Referti\\\\TSA maugeri.pdf\")",
+      "Bash(copy:*)",
+      "Bash(cmd /c copy \"c:\\\\Users\\\\ZANDA\\\\Desktop\\\\Referti\\\\TSA maugeri.pdf\" \"d:\\\\referti\"\")",
+      "Bash(cat:*)",
+      "Bash(find:*)"
+    ]
+  }
+}

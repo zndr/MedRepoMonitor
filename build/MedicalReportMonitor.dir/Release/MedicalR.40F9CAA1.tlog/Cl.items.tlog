@@ -1,0 +1,7 @@
+D:\Claude\MedicalReportMonitor\src\main.cpp;D:\Claude\MedicalReportMonitor\build\MedicalReportMonitor.dir\Release\main.obj
+D:\Claude\MedicalReportMonitor\src\Config.cpp;D:\Claude\MedicalReportMonitor\build\MedicalReportMonitor.dir\Release\Config.obj
+D:\Claude\MedicalReportMonitor\src\FileWatcher.cpp;D:\Claude\MedicalReportMonitor\build\MedicalReportMonitor.dir\Release\FileWatcher.obj
+D:\Claude\MedicalReportMonitor\src\PdfExtractor.cpp;D:\Claude\MedicalReportMonitor\build\MedicalReportMonitor.dir\Release\PdfExtractor.obj
+D:\Claude\MedicalReportMonitor\src\TextParser.cpp;D:\Claude\MedicalReportMonitor\build\MedicalReportMonitor.dir\Release\TextParser.obj
+D:\Claude\MedicalReportMonitor\src\ReportProfile.cpp;D:\Claude\MedicalReportMonitor\build\MedicalReportMonitor.dir\Release\ReportProfile.obj
+D:\Claude\MedicalReportMonitor\src\ClipboardHelper.cpp;D:\Claude\MedicalReportMonitor\build\MedicalReportMonitor.dir\Release\ClipboardHelper.obj

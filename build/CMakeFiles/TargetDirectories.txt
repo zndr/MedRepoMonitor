@@ -1,0 +1,3 @@
+D:/Claude/MedicalReportMonitor/build/CMakeFiles/MedicalReportMonitor.dir
+D:/Claude/MedicalReportMonitor/build/CMakeFiles/ALL_BUILD.dir
+D:/Claude/MedicalReportMonitor/build/CMakeFiles/ZERO_CHECK.dir
