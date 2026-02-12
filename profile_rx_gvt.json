@@ -1,0 +1,17 @@
+{
+  "profile_name": "rx_gvt",
+  "pdf_file": "radiologia_gardone.pdf",
+  "page_size": {
+    "width": 595.3499755859375,
+    "height": 841.9500122070312
+  },
+  "zones": [
+    {
+      "label": "zona_1",
+      "x": 161.5,
+      "y": 135.3,
+      "width": 426.7,
+      "height": 448.2
+    }
+  ]
+}

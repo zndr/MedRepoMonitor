@@ -1,0 +1,50 @@
+{
+  "profile_name": "dimissioni_riab_maugeri",
+  "pdf_file": "lettera_dimisisone_riab_maugeri.pdf",
+  "total_pages": 6,
+  "page_size": {
+    "width": 595.0,
+    "height": 842.0
+  },
+  "zones": [
+    {
+      "label": "identificazione",
+      "x": 80,
+      "y": 752.2,
+      "width": 340,
+      "height": 30,
+      "pages": 0
+    },
+    {
+      "label": "testo_pagina_1",
+      "x": 74.4,
+      "y": 140,
+      "width": 510,
+      "height": 563.0,
+      "pages": 0
+    },
+    {
+      "label": "testo_altre_pagine",
+      "x": 74,
+      "y": 0,
+      "width": 510,
+      "height": 563,
+      "pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ]
+    }
+  ]
+}
