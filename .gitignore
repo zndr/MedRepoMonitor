@@ -1,0 +1,8 @@
+# Auto Claude data directory
+.auto-claude/
+
+# Visual Studio
+.vs/
+
+# Build output
+build/
