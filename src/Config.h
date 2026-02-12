@@ -11,7 +11,11 @@ namespace Config {
     
     // Percorso di pdftotext.exe
     inline std::wstring pdftotextPath = L"pdftotext.exe";
-    
+
+    // Analisi AI con Claude CLI
+    inline bool claudeEnabled = false;
+    inline DWORD claudeTimeoutMs = 120000;  // 2 minuti default
+
     // Nome applicazione per registro autostart
     inline const wchar_t* APP_NAME = L"MedicalReportMonitor";
     

@@ -36,6 +36,12 @@ bool LoadConfig() {
             else if (key == L"PdfToTextPath") {
                 pdftotextPath = value;
             }
+            else if (key == L"ClaudeEnabled") {
+                claudeEnabled = (value == L"1");
+            }
+            else if (key == L"ClaudeTimeoutMs") {
+                try { claudeTimeoutMs = std::stoul(value); } catch (...) {}
+            }
         }
     }
     
@@ -54,7 +60,9 @@ bool SaveConfig() {
     file << L"WatchDirectory=" << watchDirectory << std::endl;
     file << L"OutputDirectory=" << outputDirectory << std::endl;
     file << L"PdfToTextPath=" << pdftotextPath << std::endl;
-    
+    file << L"ClaudeEnabled=" << (claudeEnabled ? L"1" : L"0") << std::endl;
+    file << L"ClaudeTimeoutMs=" << claudeTimeoutMs << std::endl;
+
     file.close();
     return true;
 }

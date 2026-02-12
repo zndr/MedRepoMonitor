@@ -14,6 +14,16 @@
 #include "PdfExtractor.h"
 #include "TextParser.h"
 #include "ClipboardHelper.h"
+#include "ZoneProfile.h"
+#include "ReportProfile.h"
+#include "ClaudeAnalyzer.h"
+#include <regex>
+
+// Flag globale per disponibilita' Python
+static bool g_pythonAvailable = false;
+
+// Flag globale per disponibilita' Claude CLI
+static bool g_claudeAvailable = false;
 
 // Colori per la console
 void SetConsoleColor(WORD color) {
@@ -53,43 +63,167 @@ void ShowNotification(const std::wstring& title, const std::wstring& message) {
 
 // Salva il testo in un file
 bool SaveToFile(const std::wstring& text, const std::wstring& filePath) {
+    // Normalizza newline: rimuovi \r per evitare \r\r\n su Windows
+    std::wstring normalized;
+    normalized.reserve(text.size());
+    for (wchar_t c : text) {
+        if (c != L'\r') {
+            normalized += c;
+        }
+    }
+
     std::wofstream file(filePath);
     if (!file.is_open()) {
         return false;
     }
-    
+
     // UTF-8 BOM per compatibilità
     file.imbue(std::locale(file.getloc(), new std::codecvt_utf8<wchar_t>));
-    file << text;
+    file << normalized;
     file.close();
     return true;
+}
+
+// Trova il profilo zone corretto per un PDF e restituisce il percorso del file JSON
+std::wstring FindZoneProfilePath(const std::wstring& pdfPath, const ZoneProfile** outProfile) {
+    *outProfile = nullptr;
+
+    if (!ZoneProfileManager::HasProfiles()) {
+        return L"";
+    }
+
+    // Estrai il testo per identificare il profilo
+    std::wstring identText = PdfExtractor::Extract(pdfPath);
+    if (identText.empty()) {
+        return L"";
+    }
+
+    *outProfile = ZoneProfileManager::FindProfile(identText);
+    if (!*outProfile) {
+        return L"";
+    }
+
+    // Costruisci il percorso del file JSON del profilo
+    std::wstring profilePath = Config::GetExecutableDir() + L"\\profile_" +
+                               (*outProfile)->profileName + L".json";
+
+    if (std::filesystem::exists(profilePath)) {
+        return profilePath;
+    }
+
+    return L"";
 }
 
 // Callback quando viene rilevato un nuovo PDF
 void OnNewPdf(const std::wstring& pdfPath) {
     std::wcout << std::endl;
     PrintInfo(L"Nuovo PDF rilevato: " + pdfPath);
-    
-    // Estrai il testo dal PDF
-    PrintInfo(L"Estrazione testo in corso...");
-    std::wstring rawText = PdfExtractor::Extract(pdfPath);
-    
+
+    std::wstring rawText;
+    std::wstring profileUsed = L"default";
+    bool usedZoneProfile = false;
+
+    // Prima prova con Python + profili zone se disponibili
+    if (g_pythonAvailable && ZoneProfileManager::HasProfiles()) {
+        const ZoneProfile* zoneProfile = nullptr;
+        std::wstring profilePath = FindZoneProfilePath(pdfPath, &zoneProfile);
+
+        if (zoneProfile && !profilePath.empty()) {
+            PrintInfo(L"Profilo zone trovato: " + zoneProfile->profileName);
+            PrintInfo(L"Estrazione con PyMuPDF...");
+            rawText = PdfExtractor::ExtractWithPython(pdfPath, profilePath);
+
+            if (!rawText.empty()) {
+                profileUsed = L"python:" + zoneProfile->profileName;
+                usedZoneProfile = true;
+                PrintSuccess(L"Estrazione completata");
+            } else {
+                PrintWarning(L"Estrazione Python fallita: " + PdfExtractor::GetLastError());
+            }
+        }
+    }
+
+    // Se non c'e' Python/profilo o l'estrazione e' fallita, usa pdftotext
+    if (rawText.empty()) {
+        PrintInfo(L"Estrazione testo completo con pdftotext...");
+        rawText = PdfExtractor::Extract(pdfPath);
+    }
+
     if (rawText.empty()) {
         PrintError(L"Estrazione fallita: " + PdfExtractor::GetLastError());
         return;
     }
-    
-    // Analizza con parser locale
-    PrintInfo(L"Analisi del referto...");
-    ParsedReport report = TextParser::Parse(rawText);
-    
-    if (!report.success) {
-        PrintError(L"Analisi fallita: " + report.errorMessage);
-        return;
+
+    // Se abbiamo usato Python, il testo e' gia' pulito - salta il parsing pesante
+    ParsedReport report;
+    if (usedZoneProfile) {
+        // Il testo da Python e' gia' formattato correttamente
+        report.reportBody = rawText;
+        report.profileUsed = profileUsed;
+        report.success = true;
+        // Estrai nome paziente dal testo (semplificato)
+        report.patientName = L"REFERTO";
+
+        // Prova a estrarre il nome con i pattern del parser
+        ProfileManager::Initialize();
+        const ReportProfile* textProfile = ProfileManager::FindProfile(rawText);
+        if (!textProfile) textProfile = ProfileManager::GetDefaultProfile();
+
+        // Cerca pattern nome paziente
+        for (const auto& pattern : textProfile->patientNamePatterns) {
+            try {
+                std::wregex re(pattern, std::regex::icase);
+                std::wsmatch match;
+                if (std::regex_search(rawText, match, re) && match.size() > 1) {
+                    std::wstring name = match[1].str();
+                    // Normalizza
+                    std::wstring normalized;
+                    bool lastWasSpace = false;
+                    for (wchar_t c : name) {
+                        if (iswalpha(c)) {
+                            normalized += towupper(c);
+                            lastWasSpace = false;
+                        } else if (iswspace(c)) {
+                            if (!lastWasSpace && !normalized.empty()) {
+                                normalized += L'_';
+                                lastWasSpace = true;
+                            }
+                        }
+                    }
+                    if (!normalized.empty() && normalized.back() == L'_') normalized.pop_back();
+                    if (!normalized.empty()) {
+                        report.patientName = normalized;
+                        break;
+                    }
+                }
+            } catch (...) {}
+        }
+    } else {
+        // Usa il parser completo per pdftotext
+        PrintInfo(L"Analisi del referto...");
+        report = TextParser::Parse(rawText);
+
+        if (!report.success) {
+            PrintError(L"Analisi fallita: " + report.errorMessage);
+            return;
+        }
     }
-    
+
     PrintSuccess(L"Profilo utilizzato: " + report.profileUsed);
-    
+
+    // Analisi AI con Claude CLI (se abilitata e disponibile)
+    if (g_claudeAvailable && Config::claudeEnabled && !report.reportBody.empty()) {
+        PrintInfo(L"Analisi AI con Claude in corso...");
+        std::wstring enriched = ClaudeAnalyzer::Analyze(report.reportBody);
+        if (!enriched.empty()) {
+            report.reportBody = enriched;
+            PrintSuccess(L"Analisi AI completata");
+        } else {
+            PrintWarning(L"Analisi AI fallita: " + ClaudeAnalyzer::GetLastError());
+            PrintInfo(L"Utilizzo testo originale");
+        }
+    }
+
     // Copia nella clipboard
     if (ClipboardHelper::CopyToClipboard(report.reportBody)) {
         PrintSuccess(L"Testo copiato nella clipboard");
@@ -182,7 +316,22 @@ bool RunSetup() {
             PrintError(L"Impossibile configurare l'autostart");
         }
     }
-    
+
+    // Analisi AI con Claude
+    std::wcout << L"\nVuoi abilitare l'analisi AI dei referti con Claude? (S/N)" << std::endl;
+    std::wcout << L"(Richiede Claude Code CLI installato e abbonamento Claude Max)" << std::endl;
+    std::wcout << L"> ";
+    std::wstring claudeChoice;
+    std::getline(std::wcin, claudeChoice);
+
+    if (claudeChoice == L"S" || claudeChoice == L"s") {
+        Config::claudeEnabled = true;
+        PrintSuccess(L"Analisi AI Claude abilitata");
+    } else {
+        Config::claudeEnabled = false;
+        PrintInfo(L"Analisi AI Claude disabilitata");
+    }
+
     // Salva configurazione
     if (Config::SaveConfig()) {
         PrintSuccess(L"Configurazione salvata");
@@ -225,8 +374,40 @@ int wmain(int argc, wchar_t* argv[]) {
         _getch();
         return 1;
     }
-    
+
     PrintSuccess(L"pdftotext.exe trovato");
+
+    // Verifica Python + PyMuPDF
+    g_pythonAvailable = PdfExtractor::IsPythonAvailable();
+    if (g_pythonAvailable) {
+        PrintSuccess(L"Python disponibile (estrazione precisione con PyMuPDF)");
+    } else {
+        PrintWarning(L"Python non disponibile (usando solo pdftotext)");
+    }
+
+    // Verifica Claude CLI
+    if (Config::claudeEnabled) {
+        g_claudeAvailable = ClaudeAnalyzer::IsAvailable();
+        if (g_claudeAvailable) {
+            PrintSuccess(L"Claude CLI disponibile (analisi AI attiva)");
+        } else {
+            PrintWarning(L"Claude CLI non disponibile (analisi AI disabilitata)");
+        }
+    } else {
+        PrintInfo(L"Analisi AI Claude: disabilitata (ClaudeEnabled=0)");
+    }
+
+    // Carica i profili zone dalla directory dell'eseguibile
+    std::wstring profilesDir = Config::GetExecutableDir();
+    if (ZoneProfileManager::LoadProfiles(profilesDir)) {
+        PrintSuccess(L"Profili zone caricati: " + std::to_wstring(ZoneProfileManager::GetProfiles().size()));
+        for (const auto& profile : ZoneProfileManager::GetProfiles()) {
+            PrintInfo(L"  - " + profile.profileName + L" (" + std::to_wstring(profile.zones.size()) + L" zone)");
+        }
+    } else {
+        PrintWarning(L"Nessun profilo zone trovato (estrazione completa)");
+    }
+
     PrintSuccess(L"Parser locale attivo");
     
     PrintInfo(L"Directory monitorata: " + Config::watchDirectory);

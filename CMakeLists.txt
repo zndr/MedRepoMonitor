@@ -15,6 +15,8 @@ set(SOURCES
     src/TextParser.cpp
     src/ReportProfile.cpp
     src/ClipboardHelper.cpp
+    src/ZoneProfile.cpp
+    src/ClaudeAnalyzer.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
